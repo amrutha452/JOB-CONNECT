@@ -1,0 +1,3832 @@
+------------------------------------------------------------------------------------------------------
+-->project firstky we created a folder and then we have enter npm init to initialise express JSON
+--> we can see package.js file get installed 
+-->then now we are installed 4 packages 
+        npm i express mongoose jsonwebtoken cors
+    
+   --> for login purpose jsonwebtoken 
+   -->cors cross origin policies 
+    --. to access router created in bcakend to use use in frontend 
+
+---> next we will install two dev dependencies 
+     
+     npm i -D nodemon concurrently
+
+     --> server restart for every chande in code (nodemon)
+     --> concurrently is for to run frontend and backend at one time 
+
+
+---> in script 
+         "start":"node server",
+         "server":"nodemon server"
+         npm run (server/start)
+
+
+--> for connecting mongodb database 
+     
+     mongoose.connect("mongodb://127.0.0.1:27017").then(()=>{
+    console.log("db connected");
+    })
+
+
+---> ippudu data ni store chesukovali kadha okko data okko dantlo save cheyali 
+     --> so manam ee below different data store chesukovali 
+         --> login
+         -->register 
+         -->allprofiles 
+         -->myprofile 
+
+    for all above we need one modal  (userdatamodal.js)
+         --> add review 
+         --> my review 
+    for all above we need another modal 
+
+------------------------  userdatamodal.js--------------------------
+
+const mongoose=require('mongoose')
+
+const userdata=new mongoose.Schema({
+    name:{
+        type:String,
+        required:true,
+    },
+    email:{
+        type:String,
+        required:true,
+    },
+    password:{
+        type:String,
+        required:true,
+    },
+    confirmpassword:{
+
+        type:String,
+        required:true,
+
+    },
+    mobile:{
+        type:String,
+        required:true,
+    },
+    skill:{
+        type:String,
+        required:true,
+    }
+})
+
+module.exports= mongoose.model('userdata',userdata);
+
+
+
+
+                                          server.js
+
+
+
+const express= require('express')
+const mongoose= require('mongoose')
+const userdata=require('./userdatamodal')
+const app=express();
+
+app.use(express.json())  // dont forget this one 
+
+mongoose.connect("mongodb://127.0.0.1:27017").then(()=>{
+    console.log("db connected");
+})
+app.get('/',(req,res)=>{
+  return res.send("Hello ammu")
+})
+
+
+app.post('/register',async (req,res)=>{
+
+    try{
+       
+        const {name,email,password,confirmpassword,mobile,skill} =req.body;
+        const exist=await userdata.findOne({email});
+        console.log(exist)
+        if(exist){
+           
+            return res.status(400).send("User Already Registered");
+            
+            //anything relates 400 403 is for authentication 
+        }
+        if(password!=confirmpassword){
+            return res.status(403).send("Your password and Confirn password are not matched");
+        }
+        
+        let newuser=new userdata({
+            name,email,password,mobile,skill,confirmpassword
+        })
+
+        newuser.save()
+        res.send(newuser)
+        return res.status(200).send("User register successfully");
+        //200 is for success code
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+        //this will just like 404 page not found type 
+        //it will diaplay on website page
+    }
+})
+
+app.listen(3000,()=>{
+    console.log("server running successfully ");
+})
+  
+---------------------------------------------------------------------------------
+                          jwt 
+
+--> before using this packet we fist have to cretae an payload 
+-->
+
+        let payload ={
+            user:{
+                id:exist.id
+            }
+        }
+        //time in milli seconds 
+        // arrow function is for generating the token 
+        jwt.sign(payload,'jwtpassword',{expiresIn:360000000},(err,token)=>{
+            if(err)
+            {
+                throw err 
+            }
+            return res.json({token})
+
+        })
+        //here password is used to decode the token in future
+
+
+-------------------------------------------------------------------------------------------------
+
+                              log in 
+
+
+app.post('/login',async (req,res)=>{
+    try{
+        const {email,password}=req.body;
+
+        const checkMail= await userdata.findOne({email})
+        if(!checkMail){
+                       
+            return res.status(400).send("Please Register First");
+        }
+    
+       if(password!=checkMail.password){
+            return res.status(400).send("Invalid Password");
+        }
+
+        let payload ={
+            user:{
+                id:checkMail.id
+            }
+        }
+        //time in milli seconds 
+        // arrow function is for generating the token 
+        jwt.sign(payload,'jwtpassword',{expiresIn:360000000},(err,token)=>{
+            if(err)
+            {
+                throw err 
+            }
+            return res.json({token})
+
+        })
+        //here password is used to decode the token in future
+
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+})
+
+
+----------->
+          after executing this it will provide us a token
+
+
+
+
+
+----------------------------------------------------------------------------------------------
+
+                               middleware 
+
+const jwt=require('jsonwebtoken')
+
+module.exports= (req,res,next)=>{
+    try{
+        let token=req.header('x-token')
+        console.log(token)
+        if(!token){
+            return res.status(400).send("token not available")
+        }
+        let decode = jwt.verify(token,'jwtpassword');
+        //the password given in jwt sign
+        //it will get one object that is user which we havre created in payload
+        req.user=decode.user;
+        next();
+        // next is to pass entire one to another variable 
+    }
+    catch(err){ 
+      console.log("err is: "+err)
+      return res.status(400).send("Authentication error in middleware")
+    }
+}
+
+
+-------------------------------------------------------------------------------------
+
+                      All profile
+
+                      // in this after verifivation of middleware only we can go to allprofiles
+app.get("/allprofile",middleware,async (req,res)=>{
+    try{
+        
+        let allprofile=await userdata.find();
+        return res.json(allprofile);
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+})
+
+
+-----------------------------------------------------------------------------------
+
+---> fisrt manam eppudaithe oka login chesamo adhi teliyadam kosam flask lo secret ley elago alga 
+     oka token concept cretae chestan
+
+---> payload func lo user ane object lo particulat user id store cgestam
+---> next oka token create chestam sign ane function tho 
+---> andulo manam password and life time istam 
+---> nect manam eppudatie all profiles access cheyalo appusu system will check wheter a user 
+     loged in using this token 
+---> before show all profiles the suyste, will go for middleware 
+---> in middleware we will access the token by setting in header 
+---> if token threre then decode it by using verify func and password set in payload below 
+
+
+
+---------------------------------------------------------------------------------------------
+  
+                     reviewdatamodal.js 
+
+
+  const mongoose=require('mongoose')
+
+const review=new mongoose.Schema({
+    taskgiver:{
+        type:String,
+        required:true,
+    },
+    tasktaker:{
+        type:String,
+        required:true,
+    },
+    rating:{
+        type:String,
+        required:true,
+    }
+})
+
+module.exports= mongoose.model('review',review);
+
+
+
+==============
+\--> in body of review 
+
+{
+   
+    "tasktaker":"6497fce32db3ed20a4a39f5f",
+    "rating":"4"
+
+}
+
+
+----------------------------------------------------------------------------
+
+                               cors 
+
+--> for making access the backend router to frontend 
+
+const cors=require('cors');
+
+app.use(cors({origin:'*'}))
+
+--> this will take origin parameter 
+--> by giving start all backend routers can b used in frontend without any restrictions
+
+
+-----------------------------------------------------------------------------
+
+--> backend part completed now fronted 
+
+--. in same terminal directory 
+    npx create-react-app new
+                or 
+    npm init react-app new
+
+--> add   in script 
+ "new":"npm start --prefix new",
+    //--prefix because src is in new new lopala exwcue cheyalisina files vunna valla --prefix vadutyunam
+    "both":"concurrently \"npm run server\" \"npm run new\" "
+
+--> both is to run frontend and backend at a time 
+ npm run both 
+
+ --> we can see output in 0 and 1 
+
+ 0-> for backend 
+ 1-> for frontend 
+
+
+
+ ---> for multi paging in react 
+ npm i axios 
+ npm install react-router-dom
+
+
+ ----------------------------------------------------------------------------------
+
+ boostrap in react 
+npm install bootstrap
+ import 'bootstrap/dist/css/bootstrap.css';
+
+
+
+
+
+
+
+
+
+
+ import React from 'react';
+import { BrowserRouter,Route,Switch } from 'react-router-dom';
+
+import Register from './Register';
+import Login from './Login'; 
+import Home from './Home';
+import Dashboard  from './Dashboard';
+const App = () => {
+  return (
+    <div>
+
+
+    
+       <BrowserRouter>
+       <Switch>
+        <Route path="/" exact component={Home}/>
+        <Route path="/login" exact component={Login}/>
+       <Route path="/register" exact component={Register}/>
+       <Route path="/dashboard" exact component={Dashboard}/>
+
+       </Switch>
+       </BrowserRouter> 
+    
+    </div>
+  )
+
+}
+
+export default App
+
+
+
+home 
+
+import React from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link} from 'react-router-dom';
+const Home = () => {
+  return (
+    <div >
+      <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="/register">Register</Link></li>
+            <li><Link to="/login">Login</Link></li>
+        </ul>
+      </nav>
+       <section className='landing' >
+        
+        <div className='dark-overlay'>
+        <div className='landing inner' style={{"textAlign":"center"}}>
+            <br/><br/> <br/><br/>
+         <h1 className='x-large'>Ammu Website</h1>
+         <br/>
+         <p className='lead'>
+            this is my website where you can get or give work  to other
+         </p>
+         <br/>
+         <div className='buttons'>
+         <Link to="/register" className='btn btn-primary'>Sign Up</Link>
+         <Link to="/login" className='btn btn-danger'>Login</Link>
+         </div>
+        </div>
+        </div>
+       </section>
+      
+    </div>
+  )
+}
+
+export default Home;
+ 
+
+
+log 
+
+import React ,{useState} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link} from 'react-router-dom';
+import axios from 'axios';
+const Login = () => {
+  const [data,setData]=useState({
+    email:'',
+    password:'',
+  })
+  const changeHandler =e=>{
+    setData({...data,[e.target.name]:e.target.value})
+  }
+  const submitHandler=e=>{
+    e.preventDefault();
+    axios.post('http://localhost:4000/login',data).then(
+      res=>{
+        //console.log(res.data)
+         localStorage.setItem('token',res.data.token)
+      }
+    
+    )
+
+  }
+  return (
+    <div>
+      
+      <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="/register">Register</Link></li>
+            <li><Link to="/login">Login</Link></li>
+        </ul>
+      </nav>
+
+      <section className='container' style={{"textAlign":"center"}}>
+        <br/><br/><br/><br/><br/>
+        <h1 className='large text-primary'>Sign in </h1><br/>
+        <p className='lead'>Sign into your account</p><br/>
+        <form className='form' onSubmit={submitHandler} autoComplete='off'>
+            <div className='form-group'>
+                <input type="email" placeholder='enter email' name="email" onChange={changeHandler} required/><br/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='enter password' name="password" onChange={changeHandler} /><br/>
+                
+            </div>
+            <br/>
+            {/* <Link to="/login" className='btn btn-danger'>Login </Link><br/><br/> */}
+            <input type="submit" className='btn btn-primary' value="Login"/>
+
+        </form>
+         <p className='my-1'>
+            Dont have an account? <Link to="/register" >Sign Up</Link>
+         </p>
+
+      </section>
+
+    </div>
+  )
+}
+
+export default Login;
+
+
+register
+
+import React,{useState} from 'react'
+
+import 'bootstrap/dist/css/bootstrap.css';
+import { Link } from 'react-router-dom';
+const Register = () => {
+    const [data,setData]=useState({
+        name:'',
+        email:'',
+        mobile:'',
+        skill:'',
+        password:'',
+        confirmpassword:'',
+
+      })
+      const changeHandler =e=>{
+        setData({...data,[e.target.name]:e.target.value})
+      }
+      const submitHandler=e=>{
+        e.preventDefault();
+        console.log(data);
+      }
+  return (
+    <div>
+      
+      <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="/register">Register</Link></li>
+            <li><Link to="/login">Login</Link></li>
+        </ul>
+      </nav>
+      <section className='container' style={{"textAlign":"center"}}>
+        <br/>
+        <h1 className='large text-primary'>Sign up </h1><br/>
+        <p className='lead'>create your account</p><br/>
+        <form className='form' onSubmit={submitHandler} autoComplete='off'>
+            <div className='form-group'>
+                <input type="text" placeholder='enter name' name="name" onChange={changeHandler} required/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="email" placeholder='enter email' name="email" onChange={changeHandler}  required/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="text" placeholder='mobile' name="mobile" onChange={changeHandler}  /><br/>
+                
+            </div><br/>
+    
+            <div className='form-group'>
+                <input type="text" placeholder='skill' name="skill" onChange={changeHandler}  /><br/>
+                <small className='form-group'>skill should be add as string seperated by (,)<br/></small>
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='password' name="password" onChange={changeHandler}  /><br/>
+                
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='confirm password' name="confirmpassword" onChange={changeHandler}  /><br/>
+                
+            </div>
+           <input type="submit" className='btn btn-primary' value="register"/>
+            </form>
+            <p className='my-1'>
+            Already  have an account? <Link to="/login" >Login/Signin</Link>
+         </p>
+        </section>
+
+    </div>
+  )
+}
+
+export default Register;
+
+
+
+
+------------------------------------------------------------------
+import { Redirect,useHistory } from 'react-router-dom';
+
+const history=useHistory()
+
+  <input type="submit" onClick={()=>history.push('/login')} className='btn btn-primary' value="register"/>
+
+==> this just like redirect on inclick
+
+
+
+import React,{useState} from 'react'
+
+import 'bootstrap/dist/css/bootstrap.css';
+import { Link } from 'react-router-dom';
+import { Redirect,useHistory } from 'react-router-dom';
+const Register = () => {
+  const history=useHistory()
+    const [data,setData]=useState({
+        name:'',
+        email:'',
+        mobile:'',
+        skill:'',
+        password:'',
+        confirmpassword:'',
+
+      })
+      const changeHandler =e=>{
+        setData({...data,[e.target.name]:e.target.value})
+      }
+      const submitHandler=e=>{
+        e.preventDefault();
+        console.log(data);
+      }
+    
+  return (
+    <div>
+      
+      <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="/register">Register</Link></li>
+            <li><Link to="/login">Login</Link></li>
+        </ul>
+      </nav>
+      <section className='container' style={{"textAlign":"center"}}>
+        <br/>
+        <h1 className='large text-primary'>Sign up </h1><br/>
+        <p className='lead'>create your account</p><br/>
+        <form className='form' onSubmit={submitHandler} autoComplete='off'>
+            <div className='form-group'>
+                <input type="text" placeholder='enter name' name="name" onChange={changeHandler} required/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="email" placeholder='enter email' name="email" onChange={changeHandler}  required/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="text" placeholder='mobile' name="mobile" onChange={changeHandler}  /><br/>
+                
+            </div><br/>
+    
+            <div className='form-group'>
+                <input type="text" placeholder='skill' name="skill" onChange={changeHandler}  /><br/>
+                <small className='form-group'>skill should be add as string seperated by (,)<br/></small>
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='password' name="password" onChange={changeHandler}  /><br/>
+                
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='confirm password' name="confirmpassword" onChange={changeHandler}  /><br/>
+                
+            </div>
+           <input type="submit" onClick={()=>history.push('/login')} className='btn btn-primary' value="register"/>
+            </form>
+            <p className='my-1'>
+            Already  have an account? <Link to="/login" >Login/Signin</Link>
+         </p>
+        </section>
+
+    </div>
+  )
+}
+
+export default Register;
+
+
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+
+const Viewprofile = ({match}) => {
+
+
+    const [data,setData]=useState(null);
+    const [review,setReview]=useState([])
+    const [rating,setRating]=useState(null);
+    const [taskgiver,setTaskgiver]=useState(null);
+
+
+    const submitHandler=e=>{
+    axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setTaskgiver(res.data.name))
+      
+      
+
+
+        let reviewobj={
+            taskgiver,
+            tasktaker:match.params.id,
+            rating
+        }
+        axios.post('http://localhost:4000/addreview',reviewobj,{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> alert(res.data))
+  
+    }
+   
+    useEffect(()=>{
+      axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=>{
+        setData(res.data);
+      
+      })
+  
+      axios.get('http://localhost:4000/myreview',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setReview(res.data))
+  
+      
+    },[])
+  
+    
+  
+  if(!localStorage.getItem('token')){
+    return <Redirect to="/login" />
+  }
+  
+
+  return (
+ 
+      <div>
+    <nav className='navbar bg-dark' >
+    <h1>
+        <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+    </h1> 
+    <ul>
+        <li><Link to="/dashboard">Dashboard</Link></li>
+        <li><Link to="/login">Logout</Link></li>
+    </ul>
+  </nav>
+
+    
+<section className='container' style={{"textAlign":"center"}}>
+<br/><br/><br/><br/><br/>
+<Link to="/dashboard" className='btn btn-primary'>Dashboard</Link>
+
+{data && 
+<div className='profile-grid my-1'>
+
+<div className='profile-top bg-secondary p-2 '>
+<img width="25%" height="25%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+
+<br/>
+<h2>{match.params.name}</h2>
+<br/>
+<p>{match.params.email}</p>
+<br/>
+<p>{match.params.skill}</p>
+
+</div>
+
+
+<div className='profile-github' >
+<br/>
+<h2 className='text-primary my-1'>Review and Rating </h2>
+<div >
+
+{reviewobj ? 
+
+reviewobj.map(review=>
+  <div>
+<br/>
+    <h4><Link to="#" >{review.taskgiver}</Link></h4>
+    <br/>
+    <p>{review.rating}/5</p>
+</div>
+)
+: <p>No Review Given</p>}
+
+
+</div>
+<div>
+<div>
+    <h4>Enter your Review</h4>
+    <form className='form' onSubmit={submitHandler} autoComplete='off'>
+     
+     <div className='form-group'>
+        <input type="text" placeholder="Enter your Rating out of 5" onChange={e=>setRating(e.target.value)} name="rating" width="100" required/>
+
+     </div>
+     <br/>
+<input type="submit"   className="btn btn-primary" value="Add Rating"/>
+<br/><br/>
+    </form>
+</div>
+</div>
+
+</div>
+
+</div>
+}
+</section>
+</div>
+    
+  )
+}
+
+export default Viewprofile
+
+
+
+
+
+
+
+
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+
+const Viewprofile = ({match}) => {
+
+
+    const [data,setData]=useState(null);
+    const [review,setReview]=useState([])
+    const [rating,setRating]=useState(null);
+    const [taskgiver,setTaskgiver]=useState(null);
+
+
+    const submitHandler=e=>{
+    axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setTaskgiver(res.data.name))
+      
+   
+        let reviewobj={
+            taskgiver,
+            tasktaker:match.params.id,
+            rating
+        }
+        axios.post('http://localhost:4000/addreview',reviewobj,{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> alert(res.data))
+  
+    }
+   
+    useEffect(()=>{
+      axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=>{
+        setData(res.data);
+      
+      })
+  
+      axios.get('http://localhost:4000/myreview',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setReview(res.data))
+  
+      
+    },[])
+  
+  
+  if(!localStorage.getItem('token')){
+    return <Redirect to="/login" />
+  }
+  
+
+  return (
+ 
+      <div>
+    <nav className='navbar bg-dark' >
+    <h1>
+        <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+    </h1> 
+    <ul>
+        <li><Link to="/dashboard">Dashboard</Link></li>
+        <li><Link to="/login">Logout</Link></li>
+    </ul>
+  </nav>
+
+    
+<section className='container' style={{"textAlign":"center"}}>
+<br/><br/><br/><br/><br/>
+<Link to="/dashboard" className='btn btn-primary'>Dashboard</Link>
+
+{data && 
+<div className='profile-grid my-1'>
+
+<div className='profile-top bg-secondary p-2 '>
+<img width="25%" height="25%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+
+<br/>
+<h2>{match.params.name}</h2>
+<br/>
+<p>{match.params.email}</p>
+<br/>
+<p>{match.params.skill}</p>
+
+</div>
+
+
+<div className='profile-github' >
+<br/>
+<h2 className='text-primary my-1'>Review and Rating </h2>
+<div >
+
+{ review.lenth ? 
+
+review.map(review=>
+  <div>
+<br/>
+
+    <h4><Link to="#" >{review.taskgiver}</Link></h4>
+    <br/>
+    <p>{review.rating}/5</p>
+</div>
+)
+: <p>No Review Given</p>}
+
+
+</div>
+<div>
+<div>
+    <h4>Enter your Review</h4>
+    <form className='form' onSubmit={submitHandler} autoComplete='off'>
+     
+     <div className='form-group'>
+        <input type="text" placeholder="Enter your Rating out of 5" onChange={e=>setRating(e.target.value)} name="rating" width="100" required/>
+
+     </div>
+     <br/>
+<input type="submit"   className="btn btn-primary" value="Add Rating"/>
+<br/><br/>
+    </form>
+</div>
+</div>
+
+</div>
+
+</div>
+}
+</section>
+</div>
+    
+  )
+}
+
+export default Viewprofile
+
+
+
+
+
+
+const express= require('express')
+const mongoose= require('mongoose')
+const userdata=require('./userdatamodal')
+const review=require('./reviewdatamodal')
+const jwt=require('jsonwebtoken')
+const middleware=require('./middleware')
+const cors=require('cors');
+
+const app=express();
+
+app.use(express.json())
+app.use(cors({origin:'*'}))
+
+
+mongoose.connect("mongodb://127.0.0.1:27017").then(()=>{
+    console.log("db connected");
+})
+app.get('/',(req,res)=>{
+  return res.send("Hello ammu")
+})
+
+
+app.post('/register',async (req,res)=>{
+
+    try{
+       
+        const {name,email,password,confirmpassword,mobile,skill} =req.body;
+        console.log(name)
+        const exist=await userdata.findOne({email});
+        console.log(exist)
+        if(exist){
+           
+            return res.status(400).send("User Already Registered");
+            
+            //anything relates 400 403 is for authentication 
+        }
+        if(password!=confirmpassword){
+            return res.status(403).send("Your password and Confirn password are not matched");
+        }
+        
+        let newuser=new userdata({
+            name,email,password,mobile,skill,confirmpassword
+        })
+      
+        newuser.save()
+        // res.send(newuser)
+        return res.status(200).send("User register successfully");
+        //200 is for success code
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+        //this will just like 404 page not found type 
+        //it will diaplay on website page
+    }
+})
+
+app.post('/login',async (req,res)=>{
+    try{
+        const {email,password}=req.body;
+
+        const checkMail= await userdata.findOne({email})
+        if(!checkMail){
+                       
+            return res.status(400).send("Please Register First");
+        }
+    
+       if(password!=checkMail.password){
+            return res.status(400).send("Invalid Password");
+        }
+
+        let payload ={
+            user:{
+                id:checkMail.id
+            }
+        }
+        //time in milli seconds 
+        // arrow function is for generating the token 
+        jwt.sign(payload,'jwtpassword',{expiresIn:3600000000},(err,token)=>{
+            if(err)
+            {
+                throw err 
+            }
+            //console.log({token})
+            return res.json({token})
+
+        })
+        //here password is used to decode the token in future
+
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+})
+
+// in this after verifivation of middleware only we can go to allprofiles
+app.get("/allprofile",middleware,async (req,res)=>{
+    try{
+        
+        let allprofile=await userdata.find();
+        return res.json(allprofile);
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+})
+
+app.get('/myprofile',middleware,async (req,res)=>{
+    try{
+        
+        let myprofile=await userdata.findById(req.user.id);
+        return res.json(myprofile);
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+    
+})
+
+
+app.post('/addreview',middleware,async (req,res)=>{
+    try{
+        
+       const {tasktaker,rating}=req.body;
+       const exist = await userdata.findById(req.user.id);
+       const reviewdata= new review({
+        taskgiver:exist.name,
+        tasktaker,rating
+
+       })
+
+       reviewdata.save()
+       return res.status(200).send("Review updated successfully ");
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+    
+})
+
+app.get('/viewreview/:id',async (req,res)=>{
+    try{
+        
+        let allreview =await review.find();
+
+        let myreview=allreview.filter(review=>review.tasktaker.toString()=== req.user.id.toString())
+
+   
+         return res.status(200).json(myreview);
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+    
+})
+
+
+app.get('/myreview',middleware,async (req,res)=>{
+    try{
+        
+        let allreview =await review.find();
+
+        let myreview=allreview.filter(review=>review.tasktaker.toString()=== req.user.id.toString())
+
+   
+         return res.status(200).json(myreview);
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+    
+})
+
+app.listen(4000,()=>{
+    console.log("server running successfully ");
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------------------------------------
+
+app.js 
+
+import React from 'react';
+import { BrowserRouter,Route,Switch } from 'react-router-dom';
+
+import Register from './Register';
+import Login from './Login'; 
+import Home from './Home';
+import Dashboard  from './Dashboard';
+import Myprofile from './Myprofile';
+ import Viewprofile from './Viewprofile';
+const App = () => {
+  return (
+    <div>
+
+
+    
+       <BrowserRouter>
+       <Switch>
+        <Route path="/" exact component={Home}/>
+        <Route path="/login" exact component={Login}/>
+       <Route path="/register" exact component={Register}/>
+       <Route path="/dashboard" exact component={Dashboard}/>
+       <Route path="/myprofile" exact component={Myprofile}/>
+        <Route path="/viewprofile/:name/:email/:skill/:id" exact component={Viewprofile}/>
+       </Switch>
+       </BrowserRouter> 
+    
+    </div>
+  )
+
+}
+
+export default App
+
+
+
+import React from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link} from 'react-router-dom';
+const Home = () => {
+  return (
+    <div >
+      <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="/register">Register</Link></li>
+            <li><Link to="/login">Login</Link></li>
+        </ul>
+      </nav>
+       <section className='landing' >
+        
+        <div className='dark-overlay'>
+        <div className='landing inner' style={{"textAlign":"center"}}>
+            <br/><br/> <br/><br/>
+         <h1 className='x-large'>Ammu Website</h1>
+         <br/>
+         <p className='lead'>
+            this is my website where you can get or give work  to other
+         </p>
+         <br/>
+         <div className='buttons'>
+         <Link to="/register" className='btn btn-primary'>Sign Up</Link>
+         <Link to="/login" className='btn btn-danger'>Login</Link>
+         </div>
+        </div>
+        </div>
+       </section>
+      
+    </div>
+  )
+}
+
+export default Home;
+
+
+
+
+
+import React,{useState,useEffect} from 'react'
+import {Link,Redirect} from 'react-router-dom'
+import 'bootstrap/dist/css/bootstrap.css';
+import axios from 'axios'
+///props used to send param to access in url data
+
+const Dashboard = () => {
+  const [data,setData]=useState([]);
+  const [search,setSearch]=useState(0);
+  const [val,setVal]=useState(null);
+
+  useEffect((data)=>{
+    axios.get('http://localhost:4000/allprofile',{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=>{
+      setData(res.data);
+     
+    })
+   
+  },[])
+
+  const changeHandler =e=>{
+    setVal(e.target.value)
+   
+  }
+
+  const submitHandlerDashboard =e =>{
+    
+ 
+   axios.get('http://localhost:4000/allprofile',{
+     headers:{
+       'x-token':localStorage.getItem('token')
+     }
+   }).then(res=>{
+     setData(res.data);
+  
+   })
+   
+
+    
+ }
+
+  const submitHandler =e =>{
+     e.preventDefault()
+     
+    axios.get('http://localhost:4000/searchprofile/'+val,{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=>{
+      setData(res.data);
+      
+    })
+    
+    
+  }
+ 
+if(!localStorage.getItem('token')){
+  return <Redirect to="/login" />
+}
+ 
+  return (
+    <div>
+     <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="myprofile">Myprofile</Link></li>
+            <li><Link to="dashboard" onClick={submitHandlerDashboard}>Dashboard</Link></li>
+            <li><Link to="/login" onClick={()=>localStorage.removeItem('token')}>LogOut</Link></li>
+        </ul>
+      </nav>
+
+      <center>
+        <br/><br/>
+      <form  className='form' onSubmit={submitHandler} autoComplete='off'>
+     
+        <input type="text" name="text" placeholder={val} onChange={changeHandler}/>
+         <input type="submit"   className="btn btn-primary" value="Search"/>
+
+    </form>
+    </center>
+ 
+
+      <section className='container' style={{"textAlign":"center"}}>
+        <br/>
+        <h1 className='large text-primary'>Developers</h1><br/>
+        <p className='lead'>Browse and connect with developers</p><br/>
+
+        <div className='profiles'>
+
+{data.length>=1 ? 
+          data.map(profile =>
+            
+            
+        <div className='profile bg-light'>
+        <img width="35%" height="35%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+      
+      <div >
+      <h2>{profile.name}</h2>
+      <p>{profile.email}</p>
+      <p>India</p>
+      <ul style={{"textAlign":"center","display":"flex","textDecoration":"none"}}>
+      {
+        profile.skill.split(',').map(skill=>
+          <li className='text-secondary'>{skill}</li>
+        )
+      }
+     </ul>
+      <Link to={`/viewprofile/${profile.name}/${profile.email}/${profile.skill}/${profile._id}`} className='btn btn-primary'>View profile</Link>
+      </div><br/>
+    
+    </div>
+   )
+          
+          : <h1>No Matching Results Found</h1>}
+
+         </div>
+        </section>
+
+    </div>
+  )
+}
+
+export default Dashboard
+
+
+
+import React ,{useState} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,Redirect} from 'react-router-dom';
+import axios from 'axios';
+const Login = () => {
+  const [auth ,setAuth]=useState(false)
+  const [data,setData]=useState({
+    email:'',
+    password:'',
+  })
+  const changeHandler =e=>{
+    setData({...data,[e.target.name]:e.target.value})
+  }
+  const submitHandler=e=>{
+    e.preventDefault();
+    axios.post('http://localhost:4000/login',data).then(
+      res=>{
+        // console.log(res.data)
+          localStorage.setItem('token',res.data.token);
+          setAuth(true)
+      }
+    
+    )
+
+  }
+    if(auth){
+    return <Redirect to="/dashboard" />
+  }
+
+  //another way (state auth place lo ee code use chesukovachu ) state use cheste delayy vundadhu 
+  // if(localStorage.getItem('token')){
+  //   return <Redirect to="/dashboard" />
+  // }
+  return (
+    <div>
+      
+      <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="/register">Register</Link></li>
+            <li><Link to="/login">Login</Link></li>
+        </ul>
+      </nav>
+
+      <section className='container' style={{"textAlign":"center"}}>
+        <br/><br/><br/><br/><br/>
+        <h1 className='large text-primary'>Sign in </h1><br/>
+        <p className='lead'>Sign into your account</p><br/>
+        <form className='form' onSubmit={submitHandler} autoComplete='off'>
+            <div className='form-group'>
+                <input type="email" placeholder='enter email' name="email" onChange={changeHandler} required/><br/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='enter password' name="password" onChange={changeHandler} /><br/>
+                
+            </div>
+            <br/>
+            {/* <Link to="/login" className='btn btn-danger'>Login </Link><br/><br/> */}
+            <input type="submit" className='btn btn-primary' value="Login"/>
+
+        </form>
+         <p className='my-1'>
+            Dont have an account? <Link to="/register" >Sign Up</Link>
+         </p>
+
+      </section>
+
+    </div>
+  )
+}
+
+export default Login;
+
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+
+const Myprofile = () => {
+
+  const [data,setData]=useState(null);
+  const [review,setReview]=useState([])
+  useEffect(()=>{
+    axios.get('http://localhost:4000/myprofile',{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=>setData(res.data))
+
+    axios.get('http://localhost:4000/myreview',{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=> setReview(res.data))
+
+    
+  },[])
+
+  
+
+if(!localStorage.getItem('token')){
+  return <Redirect to="/login" />
+}
+
+
+
+  return (
+   <div>
+    <nav className='navbar bg-dark' >
+    <h1>
+        <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+    </h1> 
+    <ul>
+        <li><Link to="/dashboard">Dashboard</Link></li>
+        <li><Link to="/login">Logout</Link></li>
+    </ul>
+  </nav>
+
+    
+<section className='container' style={{"textAlign":"center"}}>
+<br/><br/><br/><br/><br/>
+<Link to="/dashboard" className='btn btn-primary'>Dashboard</Link>
+
+{data && 
+<div className='profile-grid my-1'>
+
+<div className='profile-top bg-secondary p-2 '>
+<img width="25%" height="25%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+
+<br/>
+<h2>{data.name}</h2>
+<br/>
+<p>{data.email}</p>
+<br/>
+<p>India</p>
+
+</div>
+
+
+<div className='profile-github' >
+<br/>
+<h2 className='text-primary my-1'>Review and Rating </h2>
+<div >
+
+{review.length ?(
+review.map(review=>
+  <div>
+<br/>
+    <h4><Link to="#" >{review.taskgiver}</Link></h4>
+    <br/>
+    <p>{review.rating}/5</p>
+</div>)) : (
+<p>No review yet</p>
+)}
+
+<br/><br/><br/>
+</div>
+<div>
+<div>
+
+    
+</div>
+</div>
+
+</div>
+
+</div>
+}
+</section>
+</div>
+  )
+}
+
+export default Myprofile
+
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,useHistory,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+const Register = () => {
+      const history=useHistory()
+      const [data,setData]=useState({
+        name:'',
+        email:'',
+        mobile:'',
+        skill:'',
+        password:'',
+        confirmpassword:'',
+      });
+
+      const changeHandler =e=>{
+        setData({...data,[e.target.name]:e.target.value})
+      }
+      const submitHandler=e=>{
+        e.preventDefault();
+        console.log(data);
+        axios.post('http://localhost:4000/register',data,{
+          headers:{
+            'x-token':localStorage.getItem('token')
+          }
+        }).then(res=> alert(res.data))
+
+  }
+   
+    // if(!localStorage.getItem('token')){
+    //   return <Redirect to="/login" />
+    // }
+    
+  
+  return (
+    <div>
+      
+      <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="/register">Register</Link></li>
+            <li><Link to="/login">Login</Link></li>
+        </ul>
+      </nav>
+      <section className='container' style={{"textAlign":"center"}}>
+        <br/>
+        <h1 className='large text-primary'>Sign up </h1><br/>
+        <p className='lead'>create your account</p><br/>
+        <form className='form' onSubmit={submitHandler} autoComplete='off'>
+            <div className='form-group'>
+                <input type="text" placeholder='enter name' name="name" onChange={changeHandler} required/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="email" placeholder='enter email' name="email" onChange={changeHandler}  required/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="text" placeholder='mobile' name="mobile" onChange={changeHandler}  /><br/>
+                
+            </div><br/>
+    
+            <div className='form-group'>
+                <input type="text" placeholder='skill' name="skill" onChange={changeHandler}  /><br/>
+                <small className='form-group'>skill should be add as string seperated by (,)<br/></small>
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='password' name="password" onChange={changeHandler}  /><br/>
+                
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='confirm password' name="confirmpassword" onChange={changeHandler}  /><br/>
+                
+            </div>
+           <input type="submit" className='btn btn-primary' value="register"/>
+            </form>
+            <p className='my-1'>
+            Already  have an account? <Link to="/login" >Login/Signin</Link>
+         </p>
+        </section>
+
+    </div>
+  )
+}
+
+export default Register;
+
+
+
+
+import React from 'react'
+
+const Test = () => {
+  return (
+    <div>
+      i am test
+    </div>
+  )
+}
+
+export default Test;
+
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+
+const Viewprofile = ({match}) => {
+
+
+    const [data,setData]=useState(null);
+    const [review,setReview]=useState([])
+    const [rating,setRating]=useState(null);
+    const [taskgiver,setTaskgiver]=useState(null);
+
+    const submitHandler =e=>{
+      axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setTaskgiver(res.data.name))
+      
+   
+        let reviewobj={
+            taskgiver,
+            tasktaker:match.params.id,
+            rating
+        }
+        axios.post('http://localhost:4000/addreview',reviewobj,{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> alert(res.data))
+  
+    
+    }
+    useEffect(()=>{
+      axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=>setData(res.data))
+  
+      let reviewobj={
+        taskgiver,
+        tasktaker:match.params.id,
+        rating
+    }
+
+
+      axios.get('http://localhost:4000/view/'+reviewobj.tasktaker,{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setReview(res.data))
+  
+      
+    },[])
+  
+    
+  
+  if(!localStorage.getItem('token')){
+    return <Redirect to="/login" />
+  }
+  
+
+  return (
+ 
+      <div>
+    <nav className='navbar bg-dark' >
+    <h1>
+        <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+    </h1> 
+    <ul>
+        <li><Link to="/dashboard">Dashboard</Link></li>
+        <li><Link to="/login">Logout</Link></li>
+    </ul>
+  </nav>
+
+    
+<section className='container' style={{"textAlign":"center"}}>
+<br/><br/><br/><br/><br/>
+<Link to="/dashboard" className='btn btn-primary'>Dashboard</Link>
+
+{data && 
+<div className='profile-grid my-1'>
+
+<div className='profile-top bg-secondary p-2 '>
+<img width="25%" height="25%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+
+<br/>
+<h2>{match.params.name}</h2>
+<br/>
+<p>{match.params.email}</p>
+<br/>
+<p>{match.params.skill}</p>
+
+</div>
+
+
+<div className='profile-github' >
+<br/>
+<h2 className='text-primary my-1'>Review and Rating </h2>
+<div >
+
+{ review.length >=1 ? 
+
+review.map(review=>
+  <div>
+<br/>
+
+    <h4><Link to={`/viewprofile/${review.taskgiver}/${review.taskgiver}/${review.taskgiver}/${review.taskgiver}`} >{review.taskgiver}</Link></h4>
+    <br/>
+    <p>{review.rating}/5</p>
+</div>
+)
+: <p>No Review Given</p>}
+
+
+</div> 
+<div>
+<div>
+    <h4>Enter your Review</h4>
+    <form className='form' onSubmit={submitHandler} autoComplete='off'>
+     
+     <div className='form-group'>
+        <input type="text" placeholder="Enter your Rating out of 5" onChange={e=>setRating(e.target.value)} name="rating" width="100" required/>
+
+     </div>
+     <br/>
+<input type="submit"   className="btn btn-primary" value="Add Rating"/>
+<br/><br/>
+    </form>
+</div>
+</div>
+
+</div>
+
+</div>
+}
+</section>
+</div>
+    
+  )
+}
+
+export default Viewprofile
+
+
+
+
+//   const uploadimage=()=>{
+   
+//     fetch("http://localhost:4000/uploadimage",{
+//       method:"POST",
+//       crossDomain:true,
+//       headers:{
+//         "Content-Type":"application/json",
+//         Accept:"application/json",
+//         "Access-Control-Allow-Origin":"*",
+
+//       },
+//       body: JSON.stringify({
+//         base64:image
+//       }).then((res)=>{
+//         res.json()
+// }).then((data)=>{
+//         console.log(data)
+//       })
+//     })
+//   }
+ 
+
+
+
+
+
+
+
+import React,{useState,useEffect} from 'react'
+
+import axios from 'axios'
+const Test = () => {
+
+
+  const [data,setData]=useState(null);
+  const [image,setImage]=useState({id:"",myfile:""})
+
+  useEffect(()=>{
+    axios.get('http://localhost:4000/myprofile',{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=>setData(res.data))
+
+   
+
+    
+  },[])
+
+
+const createPost =async (newimage)=>{
+  try{
+    axios.post('http://localhost:4000/uploadimage',newimage).then((res)=>{
+     alert(res.data)
+  })
+  }catch(err){
+    console.log(err)
+  }
+}
+
+
+  const changeImage=async(e)=>{
+   const file=e.target.files[0];
+   const base64=await fun(file)
+   
+   setImage({ ...image,id:data,myfile : base64})
+  
+  }
+
+   const uploadimage=(e)=>{
+   e.preventDefault()
+  createPost(image)
+  console.log("post img"+image);
+   
+   }
+
+   const fun=(file)=>{
+    return new Promise((resolve,reject)=>{
+      
+    const reader=new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload=()=>{
+      
+      resolve(reader.result)
+    
+    }
+    reader.onerror=(error)=>{
+      reject(error);
+    }
+    })
+   }
+
+   
+  return (
+    <div > 
+    <h1>Upload your Image aere</h1>
+    <form >
+      {/* // accept="image/*" */}
+    <input  type="file" name="image" accept='image/*' onChange={changeImage}/>
+    <br/><br/>
+    
+    {image ===""||image===null ? "no image": <img alt="" src={image.myfile} width={100} height={100}/>}
+    <button onClick={uploadimage}>Upload</button>
+    </form>
+    </div>
+   
+  )
+
+
+}
+
+export default Test;
+
+
+
+
+
+
+const express= require('express')
+const mongoose= require('mongoose')
+const userdata=require('./userdatamodal')
+const review=require('./reviewdatamodal')
+const jwt=require('jsonwebtoken')
+
+const imageSchema=require('./imageschema')
+
+const middleware=require('./middleware')
+const cors=require('cors');
+
+
+const app=express();
+
+app.use(express.json())
+app.use(cors({origin:'*'}))
+
+
+mongoose.connect("mongodb://127.0.0.1:27017").then(()=>{
+    console.log("db connected");
+})
+app.get('/',(req,res)=>{
+  return res.send("Hello ammu")
+})
+
+
+app.post('/register',async (req,res)=>{
+
+    try{
+       
+        const {name,email,password,confirmpassword,mobile,skill} =req.body;
+        console.log(name)
+        const exist=await userdata.findOne({email});
+        console.log(exist)
+        if(exist){
+           
+            return res.status(400).send("User Already Registered");
+            
+            //anything relates 400 403 is for authentication 
+        }
+        if(password!=confirmpassword){
+            return res.status(403).send("Your password and Confirn password are not matched");
+        }
+        
+        let newuser=new userdata({
+            name,email,password,mobile,skill,confirmpassword
+        })
+      
+        newuser.save()
+        // res.send(newuser)
+        return res.status(200).send("User register successfully");
+        //200 is for success code
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+        //this will just like 404 page not found type 
+        //it will diaplay on website page
+    }
+})
+
+app.post('/login',async (req,res)=>{
+    try{
+        const {email,password}=req.body;
+
+        const checkMail= await userdata.findOne({email})
+        if(!checkMail){
+                       
+            return res.status(400).send("Please Register First");
+        }
+    
+       if(password!=checkMail.password){
+            return res.status(400).send("Invalid Password");
+        }
+
+        let payload ={
+            user:{
+                id:checkMail.id
+            }
+        }
+        //time in milli seconds 
+        // arrow function is for generating the token 
+        jwt.sign(payload,'jwtpassword',{expiresIn:3600000000},(err,token)=>{
+            if(err)
+            {
+                throw err 
+            }
+            //console.log({token})
+            return res.json({token})
+
+        })
+        //here password is used to decode the token in future
+
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+})
+
+// in this after verifivation of middleware only we can go to allprofiles
+app.get("/allprofile",middleware,async (req,res)=>{
+    try{
+        
+        let allprofile=await userdata.find();
+        return res.json(allprofile);
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+})
+
+app.get('/myprofile',middleware,async (req,res)=>{
+    try{
+        
+        let myprofile=await userdata.findById(req.user.id);
+        return res.json(myprofile);
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+    
+})
+
+
+
+app.get('/searchprofile/:name',async(req,res)=>{
+    try{
+       
+        
+        let search =await userdata.find({$or:[{"name":{$regex:req.params.name}},{"email":{$regex:req.params.name}},{"mobile":req.params.name},{"skill":{$regex:req.params.name}}]});
+
+       
+         return res.status(200).json(search);
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+})
+
+app.post('/addreview',middleware,async (req,res)=>{
+    try{
+        
+       const {tasktaker,rating}=req.body;
+       const exist = await userdata.findById(req.user.id);
+       const reviewdata= new review({
+        taskgiver:exist.name,
+        tasktaker,rating
+
+       })
+
+       reviewdata.save()
+       return res.status(200).send("Review updated successfully ");
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+    
+})
+
+
+app.get('/view/:id',async(req,res)=>{
+    try{
+        
+        let reviews =await review.find({"tasktaker":req.params.id});
+
+      
+         return res.status(200).json(reviews);
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+})
+
+
+app.get('/myreview',middleware,async (req,res)=>{
+    try{
+        
+        let allreview =await review.find();
+
+        let myreview=allreview.filter(review=>review.tasktaker.toString()=== req.user.id.toString())
+
+   
+         return res.status(200).json(myreview);
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+    
+})
+
+
+
+app.post('/uploadimage',async (req,res)=>{
+   
+   const body=req.body;
+   
+
+   try{
+       
+        const uploadimage= await new imageSchema(
+            body
+        )
+      
+        uploadimage.save()
+       
+        return res.send("image successfully");
+    
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("image  server error");
+        
+    }
+})
+
+
+
+app.get('/searchimage',middleware,async (req,res)=>{
+   
+    try{
+        
+        let allsearch =await imageSchema.find();
+
+        let mysearch=allsearch.filter(review=>review.id.toString()=== req.user.id.toString())
+
+   
+       
+        return res.json(mysearch);
+
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("server error");
+    }
+    
+})
+
+app.listen(4000,()=>{
+    console.log("server running successfully ");
+})
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,useHistory,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+const Register = () => {
+  
+  const [searchimg,setSearchimg]=useState(null);
+
+  const [image,setImage]=useState("")
+
+      const history=useHistory()
+      const [data,setData]=useState({
+        name:'',
+        email:'',
+        mobile:'',
+        skill:'',
+        password:'',
+        confirmpassword:'',
+        myfile:''
+      });
+
+
+
+ 
+      
+      
+        const changeImage=async(e)=>{
+         const file=e.target.files[0];
+         const base64=await fun(file)
+         
+         setImage(base64)
+       
+        
+        }
+      
+         
+      
+         
+         
+      
+         const fun=(file)=>{
+          return new Promise((resolve,reject)=>{
+            
+          const reader=new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload=()=>{
+            
+            resolve(reader.result)
+          
+          }
+          reader.onerror=(error)=>{
+            reject(error);
+          }
+          })
+         }
+      
+
+
+      const changeHandler =e=>{
+        setData({...data,[e.target.name]:e.target.value})
+        
+      }
+      const submitHandler=e=>{
+        e.preventDefault();
+        setData({myfile:image})
+        console.log(data)
+        axios.post('http://localhost:4000/register',data,{
+          headers:{
+            'x-token':localStorage.getItem('token')
+          }
+        }).then(res=> alert(res.data))
+   
+      
+  }
+   
+    if(!localStorage.getItem('token')){
+      return <Redirect to="/login" />
+    }
+    
+  
+  return (
+    <div>
+      
+      <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="/register">Register</Link></li>
+            <li><Link to="/login">Login</Link></li>
+        </ul>
+      </nav>
+      <section className='container' style={{"textAlign":"center"}}>
+        <br/>
+        <h1 className='large text-primary'>Sign up </h1><br/>
+        <p className='lead'>create your account</p><br/>
+        <h1>Upload your Image aere</h1>
+
+<input  type="file" name="image" accept='image/*' onChange={changeImage}/>
+<br/><br/>
+
+{image ===""||image===null ? "no image": <img alt="" src={image} width={100} height={100}/>}
+
+
+
+        <form className='form' onSubmit={submitHandler} autoComplete='off'>
+            <div className='form-group'>
+                <input type="text" placeholder='enter name' name="name" onChange={changeHandler} required/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="email" placeholder='enter email' name="email" onChange={changeHandler}  required/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="text" placeholder='mobile' name="mobile" onChange={changeHandler}  /><br/>
+                
+            </div><br/>
+    
+            <div className='form-group'>
+                <input type="text" placeholder='skill' name="skill" onChange={changeHandler}  /><br/>
+                <small className='form-group'>skill should be add as string seperated by (,)<br/></small>
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='password' name="password" onChange={changeHandler}  /><br/>
+                
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='confirm password' name="confirmpassword" onChange={changeHandler}  /><br/>
+                
+            </div>
+          
+           <br/>
+           <br/>
+           <div > 
+ 
+<br/>
+    <input type="submit" className='btn btn-primary' value="register"/>
+    </div>
+            </form>
+            <p className='my-1'>
+            Already  have an account? <Link to="/login" >Login/Signin</Link>
+         </p>
+         
+        </section>
+
+    </div>
+  )
+}
+
+export default Register;
+
+
+---------- error dashboard 0-----------
+
+
+import React,{useState,useEffect} from 'react'
+import {Link,Redirect} from 'react-router-dom'
+import 'bootstrap/dist/css/bootstrap.css';
+import axios from 'axios'
+///props used to send param to access in url data
+
+const Dashboard = () => {
+  const [data,setData]=useState([]);
+  const [search,setSearch]=useState(0);
+    const [myimage,setMyimage]=useState([]);
+  const [val,setVal]=useState(null);
+
+  useEffect((data)=>{
+    axios.get('http://localhost:4000/allprofile',{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=>{
+      setData(res.data);
+     
+    })
+   
+  },[])
+
+  const changeHandler =e=>{
+    setVal(e.target.value)
+   
+  }
+
+  const submitHandlerDashboard =e =>{
+    
+ 
+   axios.get('http://localhost:4000/allprofile',{
+     headers:{
+       'x-token':localStorage.getItem('token')
+     }
+   }).then(res=>{
+     setData(res.data);
+  
+   })
+   
+
+    
+ }
+
+  const submitHandler =e =>{
+     e.preventDefault()
+     
+    axios.get('http://localhost:4000/searchprofile/'+val,{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=>{
+      setData(res.data);
+      
+    })
+    
+    
+  }
+ 
+if(!localStorage.getItem('token')){
+  return <Redirect to="/login" />
+}
+ 
+  return (
+    <div>
+     <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="myprofile">Myprofile</Link></li>
+            <li><Link to="test" >test</Link></li>
+
+            <li><Link to="dashboard" onClick={submitHandlerDashboard}>Dashboard</Link></li>
+            <li><Link to="/login" onClick={()=>localStorage.removeItem('token')}>LogOut</Link></li>
+        </ul>
+      </nav>
+
+      <center>
+        <br/><br/>
+      <form  className='form' onSubmit={submitHandler} autoComplete='off'>
+     
+        <input type="text" name="text" placeholder={val} onChange={changeHandler}/>
+         <input type="submit"   className="btn btn-primary" value="Search"/>
+
+    </form>
+    </center>
+ 
+
+      <section className='container' style={{"textAlign":"center"}}>
+        <br/>
+        <h1 className='large text-primary'>Developers</h1><br/>
+        <p className='lead'>Browse and connect with developers</p><br/>
+
+        <div className='profiles'>
+
+{data.length>=1 ? 
+          data.map(profile =>
+            
+            
+        <div className='profile bg-light'>
+        <img width="35%" height="35%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+      
+      <div >
+      <h2>{profile.name}</h2>
+      <p>{profile.email}</p>
+      <p>India</p>
+      <ul style={{"textAlign":"center","display":"flex","textDecoration":"none"}}>
+      {
+        profile.skill.split(',').map(skill=>
+          <li className='text-secondary'>{skill}</li>
+        )
+      }
+     </ul>
+      <Link to={`/viewprofile/${profile.name}/${profile.email}/${profile.skill}/${profile._id}`} className='btn btn-primary'>View profile</Link>
+      </div><br/>
+    
+    </div>
+   )
+          
+          : <h1>No Matching Results Found</h1>}
+
+         </div>
+        </section>
+
+    </div>
+  )
+}
+
+export default Dashboard
+
+
+
+
+
+
+
+
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+
+const Viewprofile = ({match}) => {
+
+
+    const [data,setData]=useState(null);
+    const [review,setReview]=useState([])
+    const [rating,setRating]=useState(null);
+    const [taskgiver,setTaskgiver]=useState(null);
+    const [myimage,setMyimage]=useState([]);
+
+  
+
+    useEffect(()=>{
+    var reviewobj={
+        taskgiver,
+        tasktaker:match.params.id,
+        rating
+    }
+
+      axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=>setData(res.data))
+  
+   
+
+
+      axios.get('http://localhost:4000/view/'+reviewobj.tasktaker,{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }  
+
+      }).then(res=> setReview(res.data))
+    
+    var imageobj={
+      id:match.params.id
+    }
+
+      axios.get('http://localhost:4000/searchimage/'+imageobj.id,{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> {
+        setMyimage(res.data)
+        console.log(res.data)
+      })
+  
+      
+
+    },[])
+  
+
+    const submitHandler =e=>{
+      axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setTaskgiver(res.data.name))
+      
+   
+        let reviewobj={
+            taskgiver,
+            tasktaker:match.params._id,
+            rating,
+        }
+        axios.post('http://localhost:4000/addreview',reviewobj,{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> alert(res.data))
+  
+      
+
+    }
+    
+  
+  if(!localStorage.getItem('token')){
+    return <Redirect to="/login" />
+  }
+  
+
+  return (
+ 
+      <div>
+    <nav className='navbar bg-dark' >
+    <h1>
+        <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+    </h1> 
+    <ul>
+        <li><Link to="/dashboard">Dashboard</Link></li>
+        <li><Link to="/login">Logout</Link></li>
+    </ul>
+  </nav>
+
+    
+<section className='container' style={{"textAlign":"center"}}>
+<br/><br/><br/><br/><br/>
+<Link to="/dashboard" className='btn btn-primary'>Dashboard</Link>
+
+{data && 
+<div className='profile-grid my-1'>
+
+<div className='profile-top bg-secondary p-2 '>
+
+    
+{myimage.length ?(
+    
+    myimage.map(myimage=>
+      <div>
+    
+    <img width="25%" height="25%" className='round-image' src={myimage.myfile} alt="imahe not found" />
+
+  
+    
+    
+    </div>)) : (
+    <img width="25%" height="25%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+
+    )}
+
+
+<br/>
+<h2>{match.params.name}</h2>
+<br/>
+<p>{match.params.email}</p>
+<br/>
+<p>{match.params.skill}</p>
+
+</div>
+
+
+<div className='profile-github' >
+<br/>
+<h2 className='text-primary my-1'>Review and Rating </h2>
+<div >
+
+{ review.length >=1 ? 
+
+review.map(review=>
+  <div>
+<br/>
+
+    <h4><Link to={`/viewprofile/${review.taskgiver}/${review.taskgiver}/${review.taskgiver}/${review.taskgiver}`} >{review.taskgiver}</Link></h4>
+    <br/>
+    <p>{review.rating}/5</p>
+</div>
+)
+: <p>No Review Given</p>}
+
+
+</div> 
+<div>
+<div>
+    <h4>Enter your Review</h4>
+    <form className='form' onSubmit={submitHandler} autoComplete='off'>
+     
+     <div className='form-group'>
+        <input type="text" placeholder="Enter your Rating out of 5" onChange={e=>setRating(e.target.value)} name="rating" width="100" required/>
+
+     </div>
+     <br/>
+<input type="submit"   className="btn btn-primary" value="Add Rating"/>
+<br/><br/>
+    </form>
+</div>
+</div>
+
+</div>
+
+</div>
+}
+</section>
+</div>
+    
+  )
+}
+
+export default Viewprofile
+
+
+
+
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+
+const Myprofile = () => {
+
+  const [data,setData]=useState(null);
+  const [review,setReview]=useState([])
+
+  useEffect(()=>{
+    axios.get('http://localhost:4000/myprofile',{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=>setData(res.data))
+
+    axios.get('http://localhost:4000/myreview',{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=> setReview(res.data))
+    
+   
+
+    
+  },[])
+
+  
+
+
+if(!localStorage.getItem('token')){
+  return <Redirect to="/login" />
+}
+
+
+
+  return (
+   <div>
+    <nav className='navbar bg-dark' >
+    <h1>
+        <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+    </h1> 
+    <ul>
+        <li><Link to="/dashboard">Dashboard</Link></li>
+        <li><Link to="/login">Logout</Link></li>
+    </ul>
+  </nav>
+
+    
+<section className='container' style={{"textAlign":"center"}}>
+<br/><br/><br/><br/><br/>
+<Link to="/dashboard" className='btn btn-primary'>Dashboard</Link>
+
+{data && 
+<div className='profile-grid my-1'>
+
+<div className='profile-top bg-secondary p-2 '>
+<img width="25%" height="25%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+
+<br/>
+<h2>{data.name}</h2>
+<br/>
+<p>{data.email}</p>
+<br/>
+<p>India</p>
+
+</div>
+
+
+<div className='profile-github' >
+<br/>
+<h2 className='text-primary my-1'>Review and Rating </h2>
+<div >
+
+{review.length ?(
+review.map(review=>
+  <div>
+<br/>
+    <h4><Link to="#" >{review.taskgiver}</Link></h4>
+    <br/>
+    <p>{review.rating}/5</p>
+</div>)) : (
+<p>No review yet</p>
+)}
+
+<br/><br/><br/>
+</div>
+<div>
+<div>
+
+    
+</div>
+</div>
+
+</div>
+
+</div>
+}
+</section>
+</div>
+  )
+}
+
+export default Myprofile
+
+
+
+
+
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,useHistory,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+const Register = () => {
+      const history=useHistory()
+      const [data,setData]=useState({
+        name:'',
+        email:'',
+        mobile:'',
+        skill:'',
+        password:'',
+        confirmpassword:'',
+      });
+      
+
+
+     
+      const changeHandler =e=>{
+        setData({...data,[e.target.name]:e.target.value})
+      }
+      const submitHandler=e=>{
+        e.preventDefault();
+        console.log(data);
+        axios.post('http://localhost:4000/register',data,{
+          headers:{
+            'x-token':localStorage.getItem('token')
+          }
+        }).then(res=> alert(res.data))
+
+  }
+   
+    // if(!localStorage.getItem('token')){
+    //   return <Redirect to="/login" />
+    // }
+    
+  
+  return (
+    <div>
+      
+      <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="/register">Register</Link></li>
+            <li><Link to="/login">Login</Link></li>
+        </ul>
+      </nav>
+      <section className='container' style={{"textAlign":"center"}}>
+        <br/>
+        <h1 className='large text-primary'>Sign up </h1><br/>
+        <p className='lead'>create your account</p><br/>
+        <form className='form' onSubmit={submitHandler} autoComplete='off'>
+            <div className='form-group'>
+                <input type="text" placeholder='enter name' name="name" onChange={changeHandler} required/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="email" placeholder='enter email' name="email" onChange={changeHandler}  required/><br/>
+
+            </div>
+            <div className='form-group'>
+                <input type="text" placeholder='mobile' name="mobile" onChange={changeHandler}  /><br/>
+                
+            </div><br/>
+    
+            <div className='form-group'>
+                <input type="text" placeholder='skill' name="skill" onChange={changeHandler}  /><br/>
+                <small className='form-group'>skill should be add as string seperated by (,)<br/></small>
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='password' name="password" onChange={changeHandler}  /><br/>
+                
+            </div>
+            <div className='form-group'>
+                <input type="password" placeholder='confirm password' name="confirmpassword" onChange={changeHandler}  /><br/>
+                
+            </div>
+           <input type="submit" className='btn btn-primary' value="register"/>
+            </form>
+            <p className='my-1'>
+            Already  have an account? <Link to="/login" >Login/Signin</Link>
+         </p>
+        </section>
+
+    </div>
+  )
+}
+
+export default Register;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import React,{useState,useEffect} from 'react'
+import {Link,Redirect} from 'react-router-dom'
+import 'bootstrap/dist/css/bootstrap.css';
+import axios from 'axios'
+///props used to send param to access in url data
+
+const Dashboard = () => {
+  const [data,setData]=useState([]);
+  const [search,setSearch]=useState(0);
+  const [val,setVal]=useState(null);
+
+  useEffect((data)=>{
+    axios.get('http://localhost:4000/allprofile',{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=>{
+      setData(res.data);
+     
+    })
+   
+  },[])
+
+  const changeHandler =e=>{
+    setVal(e.target.value)
+   
+  }
+
+  const submitHandlerDashboard =e =>{
+    
+ 
+   axios.get('http://localhost:4000/allprofile',{
+     headers:{
+       'x-token':localStorage.getItem('token')
+     }
+   }).then(res=>{
+     setData(res.data);
+  
+   })
+   
+
+    
+ }
+
+  const submitHandler =e =>{
+     e.preventDefault()
+     
+    axios.get('http://localhost:4000/searchprofile/'+val,{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=>{
+      setData(res.data);
+      
+    })
+    
+    
+  }
+ 
+if(!localStorage.getItem('token')){
+  return <Redirect to="/login" />
+}
+ 
+  return (
+    <div>
+     <nav className='navbar bg-dark' >
+        <h1>
+            <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+        </h1> 
+        <ul>
+            <li><Link to="myprofile">Myprofile</Link></li>
+            <li><Link to="dashboard" onClick={submitHandlerDashboard}>Dashboard</Link></li>
+            <li><Link to="/login" onClick={()=>localStorage.removeItem('token')}>LogOut</Link></li>
+        </ul>
+      </nav>
+
+      <center>
+        <br/><br/>
+      <form  className='form' onSubmit={submitHandler} autoComplete='off'>
+     
+        <input type="text" name="text" placeholder={val} onChange={changeHandler}/>
+         <input type="submit"   className="btn btn-primary" value="Search"/>
+
+    </form>
+    </center>
+ 
+
+      <section className='container' style={{"textAlign":"center"}}>
+        <br/>
+        <h1 className='large text-primary'>Developers</h1><br/>
+        <p className='lead'>Browse and connect with developers</p><br/>
+
+        <div className='profiles'>
+
+{data.length>=1 ? 
+          data.map(profile =>
+            
+            
+        <div className='profile bg-light'>
+        <img width="35%" height="35%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+      
+      <div >
+      <h2>{profile.name}</h2>
+      <p>{profile.email}</p>
+      <p>India</p>
+      <ul style={{"textAlign":"center","display":"flex","textDecoration":"none"}}>
+      {
+        profile.skill.split(',').map(skill=>
+          <li className='text-secondary'>{skill}</li>
+        )
+      }
+     </ul>
+      <Link to={`/viewprofile/${profile.name}/${profile.email}/${profile.skill}/${profile._id}`} className='btn btn-primary'>View profile</Link>
+      </div><br/>
+    
+    </div>
+   )
+          
+          : <h1>No Matching Results Found</h1>}
+
+         </div>
+        </section>
+
+    </div>
+  )
+}
+
+export default Dashboard
+
+
+
+-----------------------------------------------------------------------------
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+
+const Viewprofile = ({match}) => {
+
+
+    const [data,setData]=useState(null);
+    const [review,setReview]=useState([])
+    const [rating,setRating]=useState(null);
+    const [taskgiver,setTaskgiver]=useState(null);
+    const [myimage,setMyimage]=useState([]);
+    const [work,setWork]=useState('')
+    const [workid,setWorkid]=useState(null)
+    useEffect(()=>{
+      axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=>setData(res.data))
+  
+
+      axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setWorkid(res.data._id))
+    
+      let reviewobj={
+        taskgiver,
+        tasktaker:match.params.id,
+        rating
+    }
+
+
+      axios.get('http://localhost:4000/view/'+reviewobj.tasktaker,{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setReview(res.data))
+  
+      var imageobj={
+        id:match.params.id
+      }
+  
+        axios.get('http://localhost:4000/searchimage/'+imageobj.id,{
+          headers:{
+            'x-token':localStorage.getItem('token')
+          }
+        }).then(res=> 
+          setMyimage(res.data)
+          
+        )
+        
+    },[])
+  
+
+    const submitHandler =e=>{
+      axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setTaskgiver(res.data.name))
+    
+  
+
+    }
+  
+
+  
+    
+
+
+   
+const changemyworkHandler =e=>{
+      setWork(e.target.value)
+    }
+    const myworksubmit=e=>{
+      e.preventDefault();
+      let myworkobj={
+        status:match.params.id,
+        name:data.name,
+        email:data.email,
+        mobile:data.mobile,
+        skill:data.skill,
+        discussion:work,
+        taskgiverid:workid
+    }
+    axios.post('http://localhost:4000/addmywork',myworkobj,{
+    headers:{
+      'x-token':localStorage.getItem('token')
+    }
+  }).then(res=> alert(res.data))
+
+
+}
+  
+  if(!localStorage.getItem('token')){
+    return <Redirect to="/login" />
+  }
+  
+
+  return (
+ 
+      <div>
+    <nav className='navbar bg-dark' >
+    <h1>
+        <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+    </h1> 
+    <ul>
+        <li><Link to="/dashboard">Dashboard</Link></li>
+        <li><Link to="/login">Logout</Link></li>
+    </ul>
+  </nav>
+
+    
+<section className='container' style={{"textAlign":"center"}}>
+<br/><br/><br/><br/><br/>
+<Link to="/dashboard" className='btn btn-primary'>Dashboard</Link>
+
+{data && 
+<div className='profile-grid my-1'>
+
+<div className='profile-top bg-secondary p-2 '>
+
+    
+{myimage.length ?(
+    
+    myimage.map(myimage=>
+      <div>
+    
+    <img width="25%" height="25%" className='round-image' src={myimage.myfile} alt="imahe not found" />
+
+  
+    
+    
+    </div>)) : (
+    <img width="25%" height="25%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+
+    )}
+
+<br/>
+<h2>{match.params.name}</h2>
+<br/>
+<p>{match.params.email}</p>
+<br/>
+<p>{match.params.skill}</p>
+
+</div>
+
+
+<div className='profile-github' >
+<br/>
+<h2 className='text-primary my-1'>Review and Rating </h2>
+<div >
+
+{ review.length >=1 ? 
+
+review.map(review=>
+  <div>
+<br/>
+
+    <h4><Link to={`/viewprofile/${review.taskgiver}/${review.taskgiver}/${review.taskgiver}/${review.taskgiver}`} >{review.taskgiver}</Link></h4>
+    <br/>
+    <p>{review.rating}/5</p>
+</div>
+)
+: <p>No Review Given</p>}
+
+
+</div> 
+<div>
+<div>
+    <h4>Enter your Review</h4>
+    <form className='form' onSubmit={submitHandler} autoComplete='off'>
+     
+     <div className='form-group'>
+        <input type="text" placeholder="Enter your Rating out of 5" onChange={e=>setRating(e.target.value)} name="rating" width="100" required/>
+
+     </div>
+     <br/>
+<input type="submit"   className="btn btn-primary" value="Add Rating"/>
+<br/><br/>
+    </form>
+
+
+    <div>
+      <form onSubmit={myworksubmit}> 
+      <h1>Want's To Hire?</h1><br/>
+       <input type="text" name="discussion" onChange={changemyworkHandler} placeholder='Enter your discusiion' width="100%" /><br/><br/>
+       <input type="submit" value="Select"  className='btn btn-primary'/>
+      </form>
+    </div>
+
+
+
+</div>
+</div>
+
+</div>
+
+</div>
+}
+</section>
+</div>
+    
+  )
+}
+
+export default Viewprofile
+
+
+
+
+
+
+---------------------------------------------------------------
+uploadimage
+
+
+app.post('/uploadimage',async (req,res)=>{
+   
+   const body=req.body;
+   
+
+   try{
+       const v= await  imageSchema.find({"id":body.id})
+     
+
+       if(v){
+const updateimage= await imageSchema.findOneAndUpdate({"id":body.id},{"myfile" : body.myfile})
+return res.send("Uploaded Successfully")
+        }
+
+        else{
+            const uploadimage= await new imageSchema(
+                body
+            )
+          
+            uploadimage.save()
+           
+            return res.send("image Uploaded  successfully");
+        }
+    }
+    catch(err){
+        console.log("the err is "+err);
+        return res.status(500).send("image  server error");
+        
+    }
+})
+
+
+
+----------------------------------------------------------------------------------
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+
+const Viewprofile = ({match}) => {
+
+
+    const [data,setData]=useState(null);
+    const [review,setReview]=useState([])
+    const [rating,setRating]=useState(null);
+    const [taskgiver,setTaskgiver]=useState(null);
+    const [myimage,setMyimage]=useState([]);
+    const [work,setWork]=useState('')
+    const [workid,setWorkid]=useState(null)
+    const [requestwork,setRequestwork]=useState('')
+    const [requestworkid,setRequestWorkid]=useState(null)
+
+    useEffect(()=>{
+      axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=>setData(res.data))
+  
+
+      axios.get('http://localhost:4000/myprofile',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setWorkid(res.data._id))
+    
+      let reviewobj={
+        taskgiver,
+        tasktaker:match.params.id,
+        rating
+    }
+
+
+      axios.get('http://localhost:4000/view/'+reviewobj.tasktaker,{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> setReview(res.data))
+  
+      var imageobj={
+        id:match.params.id
+      }
+  
+        axios.get('http://localhost:4000/searchimage/'+imageobj.id,{
+          headers:{
+            'x-token':localStorage.getItem('token')
+          }
+        }).then(res=> 
+          setMyimage(res.data)
+          
+        )
+        
+    },[])
+  
+
+    // const submitHandler =e=>{
+
+
+      
+    //   axios.get('http://localhost:4000/myprofile',{
+    //     headers:{
+    //       'x-token':localStorage.getItem('token')
+    //     }
+    //   }).then(res=> setTaskgiver(res.data.name))
+    
+  
+
+    // }
+  
+
+  
+    
+
+
+   
+const changemyworkHandler =e=>{
+      setWork(e.target.value)
+    }
+    const myworksubmit=e=>{
+   
+      let myworkobj={
+        status:match.params.id,
+        name:data.name,
+        email:data.email,
+        mobile:data.mobile,
+        skill:data.skill,
+        discussion:work,
+        taskgiverid:workid
+    }
+    axios.post('http://localhost:4000/addmywork',myworkobj,{
+    headers:{
+      'x-token':localStorage.getItem('token')
+    }
+  }).then(res=> alert(res.data))
+
+
+}
+  
+
+const submitHandler =e=>{
+  axios.get('http://localhost:4000/myprofile',{
+    headers:{
+      'x-token':localStorage.getItem('token')
+    }
+  }).then(res=> setTaskgiver(res.data.name))
+  
+
+    let reviewobj={
+        taskgiver,
+        tasktaker:match.params.id,
+        rating
+    }
+    axios.post('http://localhost:4000/addreview',reviewobj,{
+    headers:{
+      'x-token':localStorage.getItem('token')
+    }
+  }).then(res=> alert(res.data))
+
+
+}
+
+  if(!localStorage.getItem('token')){
+    return <Redirect to="/login" />
+  }
+  
+
+  return (
+ 
+      <div>
+    <nav className='navbar bg-dark' >
+    <h1>
+        <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+    </h1> 
+    <ul>
+        <li><Link to="/dashboard">Dashboard</Link></li>
+        <li><Link to="/login">Logout</Link></li>
+    </ul>
+  </nav>
+
+    
+<section className='container' style={{"textAlign":"center"}}>
+<br/><br/><br/><br/><br/>
+<Link to="/dashboard" className='btn btn-primary'>Dashboard</Link>
+
+{data && 
+<div className='profile-grid my-1'>
+
+<div className='profile-top bg-secondary p-2 '>
+
+    
+{myimage.length ?(
+    
+    myimage.map(myimage=>
+      <div>
+    
+    <img width="25%" height="25%" className='round-image' src={myimage.myfile} alt="imahe not found" />
+
+  
+    
+    
+    </div>)) : (
+    <img width="25%" height="25%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+
+    )}
+
+<br/>
+<h2>{match.params.name}</h2>
+<br/>
+<p>{match.params.email}</p>
+<br/>
+<p>{match.params.skill}</p>
+
+</div>
+
+
+<div className='profile-github' >
+<br/>
+<h2 className='text-primary my-1'>Review and Rating </h2>
+<div >
+
+{ review.length >=1 ? 
+
+review.map(review=>
+  <div>
+<br/>
+
+    <h4><Link to={`/viewprofile/${review.taskgiver}/${review.taskgiver}/${review.taskgiver}/${review.taskgiver}`} >{review.taskgiver}</Link></h4>
+    <br/>
+    <p>{review.rating}/5</p>
+</div>
+)
+: <p>No Review Given</p>}
+
+
+</div> 
+<div>
+<div>
+    <h4>Enter your Review</h4>
+    <form className='form' onSubmit={submitHandler} autoComplete='off'>
+     
+     <div className='form-group'>
+        <input type="text" placeholder="Enter your Rating out of 5" onChange={e=>setRating(e.target.value)} name="rating" width="100" required/>
+
+     </div>
+     <br/>
+<input type="submit"   className="btn btn-primary" value="Add Rating"/>
+<br/><br/>
+    </form>
+
+
+    <div>
+      <form onSubmit={myworksubmit}> 
+      <h1>Want's To Hire?</h1><br/>
+       <input type="text" name="discussion" onChange={changemyworkHandler} placeholder='Enter your discusiion' width="100%" /><br/><br/>
+       <input type="submit" value="Select"  className='btn btn-primary'/>
+      </form>
+    </div>
+
+
+
+</div>
+</div>
+
+</div>
+
+</div>
+}
+</section>
+</div>
+    
+  )
+}
+
+export default Viewprofile
+
+
+-----------------------------------------------------------------------
+
+
+
+import React,{useState,useEffect} from 'react'
+import 'bootstrap/dist/css/bootstrap.css';
+import {Link,Redirect} from 'react-router-dom';
+
+import axios from 'axios';
+
+const Myprofile = () => {
+
+  const [data,setData]=useState(null);
+  const [review,setReview]=useState([])
+  const [myimage,setMyimage]=useState([]);
+  useEffect(()=>{
+    axios.get('http://localhost:4000/myprofile',{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=>setData(res.data)
+      
+      
+    )
+
+    axios.get('http://localhost:4000/myreview',{
+      headers:{
+        'x-token':localStorage.getItem('token')
+      }
+    }).then(res=> setReview(res.data))
+
+   
+
+      axios.get('http://localhost:4000/myprofileimage',{
+        headers:{
+          'x-token':localStorage.getItem('token')
+        }
+      }).then(res=> {
+        
+        setMyimage(res.data)
+      }
+        
+      )
+
+  },[])
+
+  
+
+if(!localStorage.getItem('token')){
+  return <Redirect to="/login" />
+}
+
+
+
+  return (
+   <div>
+    <nav className='navbar bg-dark' >
+    <h1>
+        <Link to='/'><i className="fas fa-code"></i>Ammu Website</Link>
+    </h1> 
+    <ul>
+        <li><Link to="/dashboard">Dashboard</Link></li>
+        <li><Link to="/login">Logout</Link></li>
+    </ul>
+  </nav>
+
+    
+<section className='container' style={{"textAlign":"center"}}>
+<br/><br/><br/><br/><br/>
+<Link to="/dashboard" className='btn btn-primary'>Dashboard</Link>
+
+{data && 
+<div className='profile-grid my-1'>
+
+<div className='profile-top bg-secondary p-2 '>
+
+
+
+
+{myimage.length ?(
+    
+    myimage.map(myimage=>
+      <div>
+    
+    <img width="25%" height="25%" className='round-image' src={myimage.myfile} alt="imahe not found" />
+
+  
+    
+    
+    </div>)) : (
+    <img width="25%" height="25%" className='round-image' src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsef7thzQjiXGYs7So3TolzWDcDun_BldzyQ&usqp=CAU" alt="imahe not found" />
+
+    )}
+
+
+
+<br/>
+<h2>{data.name}</h2>
+<br/>
+<p>{data.email}</p>
+<br/>
+<p>India</p>
+
+</div>
+
+
+<div className='profile-github' >
+<br/>
+<h2 className='text-primary my-1'>Review and Rating </h2>
+<div >
+
+{review.length ?(
+review.map(review=>
+  <div>
+<br/>
+    <h4><Link to="#" >{review.taskgiver}</Link></h4>
+    <br/>
+    <p>{review.rating}/5</p>
+</div>)) : (
+<p>No review yet</p>
+)}
+
+<br/><br/><br/>
+</div>
+<div>
+<div>
+
+    
+</div>
+</div>
+
+</div>
+
+</div>
+}
+</section>
+</div>
+  )
+}
+
+export default Myprofile
+
+
+
+//////////////////////////////////////////////
+
+
+navbar --> 
+
+style={{"textDecoration": "none",color:"black"}}
+
+
+
+
+
+
+
+
+ npm install gh-pages --save-dev
+ git remote add origin https://github.com/amrutha452/project.git
+ npm run deploy
+
+
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
+
+      "homepage": "http://amrutha452.github.io/mernProject",
+
+
+
+
+
+
+
+//////////////////////////
+
+
+   "proxy" :"http://localhost:3001/mernProject" 
+
+
+
+   If you're using a front-end application that makes request to a back-end API, you need to include certain headers in the API server if the API server is running on a different port.
+
+For example, if you're serving a ReactJS application with webpack in development mode, webpack acts as a server, sending the reactJS application to the client. Then, making requests to the API server will require that the API server, running on a different port, include Access-Control-Allow-Origin headers in all http responses.
+
+Basically, before generating every response, you need to set 'Access-Control-Allow-Origin' to localhost:<port you visit in the browser>.
+
+In a basic express app, you can paste this in your app.js file, for example:
+
+app.use(function(req, res, next) {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3001');
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept'
+  );
+  next();
+});
+Note: If you may need to change http://localhost:3001 to match the port you visit in the browser.
+
+EDIT: OP is not using express, but is using Webpack. The question is: What is an express-agnostic solution?
+
+Answer: The solution is still the same: regardless of what API server you are using, just set the response headers for every response.
+
+There is another solution that involves Webpack, though:
+
+In the package.json file of your front end code that's being served with webpack, add the following: "proxy" :"http://localhost:<port API server is running on>"
+
+For example, is webpack is serving your front end app to localhost:3000 and your api server is running on localhost:3001, then the proxy in package.json would be:
+
+"proxy":"http://localhost:3001"
+
+
+
+
+
+
+
+
+   "proxy" :"http://localhost:3001/mernProject" 
+
+
+   babel install
+
+   npm install --save-dev @babel/plugin-proposal-private-property-in-object --legacy-peer-deps
+
+   "plugins": [
+    ["@babel/plugin-proposal-private-property-in-object", { "loose": true }]
+]
+
+
+
+app.post lo 3001 li ip marcha 
+app,listen kuda 3001 ki marcha so oka error poyindi
+
+end redirect chesi comments lo petta  adi check cheyu
