@@ -8,3 +8,8 @@ This is my Mern Project.
 
 ![Screenshot (81)](https://github.com/amrutha452/JOB-CONNECT/assets/117029740/5be59d25-6b99-40d8-93b4-93ab1d5b874c)
 
+#<h1>LOGIN PAGE</h1>
+
+![Screenshot (82)](https://github.com/amrutha452/JOB-CONNECT/assets/117029740/e99f4605-9226-43d5-804c-3f8f2da90fa7)
+
+
