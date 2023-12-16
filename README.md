@@ -20,6 +20,10 @@ This is my Mern Project.
 #<center><h1>MY PROFILE PAGE</h1></center>
 ![j5](https://github.com/amrutha452/JOB-CONNECT/assets/117029740/43131446-61f3-4251-9004-2f176638b68e)
 
+#<h1>EDIT PAGE</h1>
+![j6](https://github.com/amrutha452/JOB-CONNECT/assets/117029740/60c50185-41c6-49b1-8fad-04f6d7450fe8)
+
+
 
 
 
