@@ -23,6 +23,17 @@ This is my Mern Project.
 #<h1>EDIT PAGE</h1>
 ![j6](https://github.com/amrutha452/JOB-CONNECT/assets/117029740/60c50185-41c6-49b1-8fad-04f6d7450fe8)
 
+#<h1>VIEW PROFILE</h1>
+![j10](https://github.com/amrutha452/JOB-CONNECT/assets/117029740/3d54065f-1d77-4e70-afe9-4769cff80a29)
+
+#<h1>REQUEST PAGE</h1>
+![j8](https://github.com/amrutha452/JOB-CONNECT/assets/117029740/b6cea394-bd89-4f70-a04d-59705f984d0e)
+
+
+#<h1>MYWORK PAGE</h1>
+![j7](https://github.com/amrutha452/JOB-CONNECT/assets/117029740/6440b57e-7e26-4c3d-ae4e-d904347ef61a)
+
+
 
 
 
