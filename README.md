@@ -17,5 +17,9 @@ This is my Mern Project.
 
 ![j4](https://github.com/amrutha452/JOB-CONNECT/assets/117029740/5e4756ad-8fbc-449b-b9c5-4b935b2749d0)
 
+#<center><h1>MY PROFILE PAGE</h1></center>
+![j5](https://github.com/amrutha452/JOB-CONNECT/assets/117029740/43131446-61f3-4251-9004-2f176638b68e)
+
+
 
 
